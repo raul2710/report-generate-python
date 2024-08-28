@@ -89,7 +89,6 @@ school_term = ""
 grade = ""
 school = ""
 
-
 print(ws.max_row)
 print(ws.max_column)
 
