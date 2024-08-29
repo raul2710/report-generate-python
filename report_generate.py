@@ -1,9 +1,9 @@
 # import tkinter as tk
 # from turtle import right
 from fpdf import FPDF
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-from matplotlib.figure import Figure
 from PIL import Image
+import pandas as pd
+import json
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -134,20 +134,20 @@ class Student():
         self.grade = ""
         self.school_name = ""
         self.total_correct_ans = {
-            'lp':0, 
-            'mat':0,
-            'geo':0,
-            'his':0,
-            'bio':0,
-            'ing':0
+            "lp":0, 
+            "mat":0,
+            "geo":0,
+            "his":0,
+            "bio":0,
+            "ing":0
         }
         self.total_questions = {
-            'lp':0, 
-            'mat':0,
-            'geo':0,
-            'his':0,
-            'bio':0,
-            'ing':0
+            "lp":0, 
+            "mat":0,
+            "geo":0,
+            "his":0,
+            "bio":0,
+            "ing":0
         }
         self.score = 0
 
@@ -166,12 +166,12 @@ classrooms = []
 students = []
 
 total_percentage_ans = {
-    'lp':0, 
-    'mat':0,
-    'geo':0,
-    'his':0,
-    'bio':0,
-    'ing':0
+    "lp":0, 
+    "mat":0,
+    "geo":0,
+    "his":0,
+    "bio":0,
+    "ing":0
 }
 
 for irow in range(2, ws.max_row+1):
@@ -329,15 +329,13 @@ for irow in range(2, ws.max_row+1):
     # print("Name: ", student.name)
     # print("\n\nTotal questions:")
 
-    # for key, value in student.total_questions.items():
-    #     print(key, " : ", student.total_questions[key])
-    #     total_percentage_ans[key] = (student.total_correct_ans[key]*100)/(student.total_questions[key]) if student.total_questions[key] else 0
+    for key, value in student.total_questions.items():
+        total_percentage_ans[key] = (student.total_correct_ans[key]*100)/(student.total_questions[key]) if student.total_questions[key] else 0
     
     # print("======================\nCorrect ans:")
 
-    # for key, value in student.total_correct_ans.items():
-    #     print(key, " : ", student.total_correct_ans[key])
-    #     student.score += student.total_correct_ans[key]
+    for key, value in student.total_correct_ans.items():
+        student.score += student.total_correct_ans[key]
     
     # print("======================\nPercentage ans:")
 
@@ -349,14 +347,18 @@ for irow in range(2, ws.max_row+1):
 
     students.append(student)
 
+# Choose a student
 student_chose = students[25]
+
+# Start create a PDF
 pdf = FPDF(orientation="P", unit="mm", format="A4")
 pdf.add_page()
 pdf.set_font("helvetica", "B", 12)
 
-# Nome
-# Serie turma / periodo
-# Escola
+# Insert follow informations:
+# Name
+# Grade group / school term         Score
+# School
 pdf.cell(60, 10, student_chose.name)
 pdf.ln()
 pdf.cell(60, 10, f"Serie: {student_chose.grade} Turma: {student_chose.group}/ Periodo: {student_chose.school_term}")
@@ -364,77 +366,72 @@ pdf.cell(0, 10, f"Nota: {student_chose.score}", align="R")
 pdf.ln()
 pdf.cell(60, 10, f"Escola: {student_chose.school_name}")
 pdf.ln()
-pdf.output("student.pdf")
 
+################################# Generate graph ##################################################
+json_string = json.dumps(students[25].total_correct_ans)
+DF = pd.DataFrame(
+    data=students[25].total_correct_ans, index=['Acertos', '% Acertos']
+    # Convert all data inside dataframe into string type:
+).map(str)
 
-# Testing a graphics with real data
-# print([scores for key, scores in students[25].total_correct_ans.items()])
-# print([scores for key, scores in students[25].total_questions.items()])
-# print([scores for key, scores in classrooms[1].average_correct_ans().items()])
-# print([scores for key, scores in schools[1].average_correct_ans().items()])
-# print([scores for key, scores in school_networks[0].average_correct_ans().items()])
+COLUMNS = [list(DF)]  # Get list of dataframe columns
+ROWS = DF.values.tolist()  # Get list of dataframe rows
+DATA = COLUMNS + ROWS  # Combine columns and rows in one list
 
-# student_chose = students[25]
-# classroom_chose = classrooms[2]
-# school_chose = schools[2]
-# school_network_chose = school_networks[0]
+with pdf.table(
+    
+    borders_layout="MINIMAL",
+    cell_fill_color=200,  # grey
+    cell_fill_mode="ROWS",
+    line_height=pdf.font_size * 1.5,
+    text_align="CENTER",
+    width=160,
+) as table:
+    for data_row in DATA:
+        row = table.row()
+        for datum in data_row:
+            row.cell(datum)
 
-# score_student = [scores for key, scores in student_chose.total_correct_ans.items()]
-# score_classroom = [scores for key, scores in classroom_chose.average_correct_ans().items()]
-# score_school = [scores for key, scores in school_chose.average_correct_ans().items()]
-# score_school_network = [scores for key, scores in school_network_chose.average_correct_ans().items()]
+pdf.ln()
 
-# barWidth = 0.15
+################################# Generate graph ##################################################
+student_chose = students[25]
+classroom_chose = classrooms[2]
+school_chose = schools[2]
+school_network_chose = school_networks[0]
 
-# plt.figure(figsize=(10, 5))
+score_student = [scores for key, scores in student_chose.total_correct_ans.items()]
+score_classroom = [scores for key, scores in classroom_chose.average_correct_ans().items()]
+score_school = [scores for key, scores in school_chose.average_correct_ans().items()]
+score_school_network = [scores for key, scores in school_network_chose.average_correct_ans().items()]
 
-# r1 = np.arange(len(score_student))
-# r2 = [x + barWidth for x in r1]
-# r3 = [x + barWidth for x in r2]
-# r4 = [x + barWidth for x in r3]
+barWidth = 0.15
 
-# plt.bar(r1, score_student, color='#00FF55', width=barWidth, label=student_chose.name)
-# plt.bar(r2, score_classroom, color='#550055', width=barWidth, label='Media da classe')
-# plt.bar(r3, score_school, color='#FF6655', width=barWidth, label='Media da escola')
-# plt.bar(r4, score_school_network, color='#FF4455', width=barWidth, label='Media da rede')
+plt.figure(figsize=(10, 3), dpi=300)
 
-# plt.xlabel('Gráfico de Provas')
-# plt.xticks([r + barWidth for r in range(len(score_student))], [key.upper() for key, scores in student_chose.total_correct_ans.items()])
-# plt.ylabel('Notas')
-# plt.title('Representacao das notas de 3 alunos em 4 provas')
+r1 = np.arange(len(score_student))
+r2 = [x + barWidth for x in r1]
+r3 = [x + barWidth for x in r2]
+r4 = [x + barWidth for x in r3]
 
-# fig = plt.gcf()
+plt.bar(r1, score_student, color='#00FF55', width=barWidth, label=student_chose.name)
+plt.bar(r2, score_classroom, color='#550055', width=barWidth, label='Media da classe')
+plt.bar(r3, score_school, color='#FF6655', width=barWidth, label='Media da escola')
+plt.bar(r4, score_school_network, color='#FF4455', width=barWidth, label='Media da rede')
 
+plt.xlabel('Gráfico de Provas')
+plt.xticks([r + barWidth for r in range(len(score_student))], [key.upper() for key, scores in student_chose.total_correct_ans.items()])
+plt.ylabel('Notas')
+plt.title('Representacao das notas de 3 alunos em 4 provas')
 
-
-fig = Figure(figsize=(6, 4), dpi=300)
-fig.subplots_adjust(top=0.8)
-ax1 = fig.add_subplot(211)
-ax1.set_ylabel("volts")
-ax1.set_title("a sine wave")
-
-t = np.arange(0.0, 1.0, 0.01)
-s = np.sin(2 * np.pi * t)
-(line,) = ax1.plot(t, s, color="blue", lw=2)
-
-# Fixing random state for reproducibility
-np.random.seed(19680801)
-
-ax2 = fig.add_axes([0.15, 0.1, 0.7, 0.3])
-n, bins, patches = ax2.hist(
-    np.random.randn(1000), 50, facecolor="yellow", edgecolor="yellow"
-)
-ax2.set_xlabel("time (s)")
-
-# Converting Figure to an image:
-canvas = FigureCanvas(fig)
+canvas = plt.gca().figure.canvas
 canvas.draw()
+
 img = Image.fromarray(np.asarray(canvas.buffer_rgba()))
 
-pdf = FPDF()
-pdf.add_page()
-pdf.image(img, w=pdf.epw)  # Make the image full width
-pdf.output("matplotlib.pdf")
+pdf.image(img, w=pdf.epw)
+
+pdf.output("student.pdf")
 
 # def exportar_para_pdf():
 #     pdf_file = "conteudo_exportado.pdf"
